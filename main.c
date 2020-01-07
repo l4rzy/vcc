@@ -1,9 +1,12 @@
 #include "src/lexer.h"
 #include "src/utils.h"
-//a
-/* ad */ int /* a dumb comment */ print_tok(vtoken_t *t) {
+
+// print token
+int print_tok(vtoken_t *t) {
     printf("token.type = %d\n", t->type);
-    printf("token.value = %s\n", t->value->s);
+    if (t->value) {
+        printf("token.value = %s\n", t->value->s);
+    }
     return 0;
 }
 

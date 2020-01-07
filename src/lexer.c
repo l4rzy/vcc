@@ -66,6 +66,11 @@ static void reset_buf() {
  */
 vtoken_t *vtoken_new(int type, int start, int len) {
     vtoken_t *tok = xalloc(sizeof(vtoken_t));
+    if (start < 0) {
+        tok->type = type;
+        tok->value = NULL;
+        return tok;
+    }
     tok->type = type;
     tok->value = buf_new_from_mem(filebuf->s + start, len);
     return tok;
@@ -107,7 +112,7 @@ static int discard_until(char ch) {
 /* gets next char
  */
 static char next(int n) {
-    assert(filebufptr + n < filebuf->len);
+    assert(filebufptr + n <= filebuf->len);
     filebufptr += n;
     c = filebuf->s[filebufptr];
     ++col;
@@ -196,7 +201,7 @@ static vtoken_t *scan_string() {
     while (1) {
         next(1); // skip the first string delimiter
         ++len;
-        if (c == EOF) {
+        if (c == BUF_EOF) {
             errors("String has no ending delimiter\n");
             return NULL;
         }
@@ -221,7 +226,7 @@ static int scan_comment() {
     int stack = 1;
     while (stack) {
         next(1); // skip current comment open symbol
-        if (c == EOF) {
+        if (c == BUF_EOF) {
             errors("Comment has no ending\n");
             return -1;
         }
@@ -236,6 +241,8 @@ static int scan_comment() {
             continue;
         }
     }
+    logf("C comment ended on line %d\n", line);
+    next(1);
     return 0;
 }
 
@@ -272,7 +279,8 @@ int lex_init(const char *_fname) {
     strncpy(fname, _fname, 255);
     line = 1;
     col = 0;
-    filebufptr = -1;
+    filebufptr = 0;
+    c = filebuf->s[filebufptr];
     buflen = 0;
     lastlex = 0;
     return 0;
@@ -294,9 +302,10 @@ _lex_loop:
         return NULL;
     }
     // ignore white spaces
-    if (next(1) != EOF) {
+    if (c != BUF_EOF) {
         if (isspace(c)) {
             // it's safe to continue here since we filter new line in next(1)
+            next(1);
             goto _lex_loop;
         }
         logf("line %d col %d | c = %c\n", line, col, c);
@@ -323,7 +332,6 @@ _lex_loop:
                 logf("C comment on line %d\n", line);
                 lastlex = scan_comment();
                 if (lastlex == 0) {
-                    logf("C comment ended on line %d\n", line);
                     goto _lex_loop; // skip to the next real token
                 }
                 // return error
@@ -331,9 +339,47 @@ _lex_loop:
             }
             if (peek(1) == '=') {
                 // this is the case of division operation
-                token->type = TOKEN_DIV_ASSIGN;
+                next(2);
+                return vtoken_new(TOKEN_DIV_ASSIGN, -1, 0);
+            }
+        }
+        if (c == ';') {
+            next(1);
+            return vtoken_new(TOKEN_SEMICOLON, -1, 0);
+        }
+        if (c == '(') {
+            next(1);
+            return vtoken_new(TOKEN_LBRACKET, -1, 0);
+        }
+        if (c == ')') {
+            next(1);
+            return vtoken_new(TOKEN_RBRACKET, -1, 0);
+        }
+        if (c == '{') {
+            next(1);
+            return vtoken_new(TOKEN_LPAREN, -1, 0);
+        }
+        if (c == '}') {
+            next(1);
+            return vtoken_new(TOKEN_RPAREN, -1, 0);
+        }
+        if (c == '*') {
+            next(1);
+            return vtoken_new(TOKEN_ASTERISK, -1, 0);
+        }
+        if (c == '-') {
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_SUB_ASSIGN, -1, 0);
+            } else if (peek(1) == '>') {
+                next(2);
+                return vtoken_new(TOKEN_POINTER, -1, 0);
+            } else if (peek(1) == '-') {
+                next(2);
+                return vtoken_new(TOKEN_DEC, -1, 0);
+            } else {
                 next(1);
-                return 0;
+                return vtoken_new(TOKEN_SUB, -1, 0);
             }
         }
         // identifiers and keywords don't start with digit, only numbers
@@ -349,7 +395,7 @@ _lex_loop:
         /* add the final token: the EOF
          */
         logs("Reached EOF\n");
-        return vtoken_new(TOKEN_EOF, filebufptr, 0);
+        return vtoken_new(TOKEN_EOF, -1, 0);
     }
     return NULL;
 }

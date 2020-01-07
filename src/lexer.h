@@ -5,6 +5,7 @@
 #include "utils.h"
 #include <ctype.h>
 
+#define BUF_EOF                 '\0'
 #define BUF_MAX_SIZE            1024        // token content in buffer
 #define NESTING_MAX_LEVEL       128         // nesting comments
 
@@ -76,7 +77,7 @@ enum {
      */
     TOKEN_ADD, // +
     TOKEN_SUB, // -
-    TOKEN_MUL, // *
+    TOKEN_ASTERISK, // *
     TOKEN_DIV, // /
     TOKEN_MOD, // %
     TOKEN_EQ, // ==
@@ -105,6 +106,8 @@ enum {
     TOKEN_MUL_ASSIGN, // *=
     TOKEN_DIV_ASSIGN, // /=
     TOKEN_MOD_ASSIGN, // %=
+
+    TOKEN_POINTER, // ->
     /* others
      */
     NUM_TOKENS
