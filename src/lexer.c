@@ -124,16 +124,22 @@ static char next(int n) {
 
 /* checks if current char is digits
  */
-static int is_digit() {
-    return (c >= '0' && c <= '9');
+static int is_digit(char chr) {
+    return (chr >= '0' && chr <= '9');
 }
 
 /* checks if current char is alpha
  */
-static int is_alpha() {
-    return ((c >= 'a' && c <= 'z') ||
-            (c >= 'A' && c <= 'Z') ||
-            (c == '_'));
+static int is_alpha(char chr) {
+    return ((chr >= 'a' && chr <= 'z') ||
+            (chr >= 'A' && chr <= 'Z') ||
+            (chr == '_'));
+}
+
+/* checks if current char is legit for id
+ */
+static int is_id(char chr) {
+    return (is_digit(chr) || is_alpha(chr));
 }
 
 /* =================== SCANNERS ==================== */
@@ -246,17 +252,21 @@ static int scan_comment() {
     return 0;
 }
 
-static int identifier_test(int keyword) {
+static int identifier_test() {
     return 0;
 }
 
 static vtoken_t *scan_identifier() {
-    logs("scanning identifiers\n");
+    logs("scanning identifier\n");
     // init buffer state
     reset_buf();
     buflen = 0;
     while (1) {
-        if (is_alpha(c)) {
+        if (buflen == 0 && is_alpha(c)) {
+            buf[buflen++] = c;
+            next(1);
+        }
+        else if (buflen > 0 && is_id(c)) {
             buf[buflen++] = c;
             next(1);
         } else {
