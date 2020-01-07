@@ -165,6 +165,7 @@ static vtoken_t *scan_char() {
 }
 
 static vtoken_t *scan_number() {
+    logs("Scanning number\n");
     reset_buf();
     buflen = 0;
     int dotcount = 0;
@@ -173,7 +174,8 @@ static vtoken_t *scan_number() {
         if (c == '.') {
             if (dotcount == 0) {
                 tt = TOKEN_FLOAT;
-                eat();
+                buf[buflen++] = c;
+                next(1);
                 continue;
             } else {
                 errors("wrong float format\n");
@@ -181,18 +183,25 @@ static vtoken_t *scan_number() {
             }
         }
         if (is_digit(c)) {
-            eat();
+            buf[buflen++] = c;
+            next(1);
             continue;
         } else {
-            errors("Invalid number?");
-            return NULL;
+            break;
         }
-        // number postfix etc.
-        logf("parsed number: %s\n", buf);
-        vtoken_t *tok = vtoken_new_from_buf(tt);
-        return tok;
     }
-    return NULL;
+    // number postfix etc.
+    if (tt == TOKEN_FLOAT && buflen < 2) {
+        errors("wrong float\n");
+        return NULL;
+    }
+    if (tt == TOKEN_INT && buflen < 1) {
+        errors("wrong int\n");
+        return NULL;
+    }
+    logf("parsed number: %s\n", buf);
+    vtoken_t *tok = vtoken_new_from_buf(tt);
+    return tok;
 }
 
 static vtoken_t *scan_string() {
@@ -308,7 +317,7 @@ _lex_loop:
             next(1);
             goto _lex_loop;
         }
-        logf("line %d col %d | c = %c\n", line, col, c);
+        logf("line %d col %d | c = '%c'\n", line, col, c);
         if (c == '#') {
             logf("Preprocessor procedure on line %d\n", line);
             discard_until('\n');
@@ -364,8 +373,84 @@ _lex_loop:
             return vtoken_new(TOKEN_RPAREN, -1, 0);
         }
         if (c == '*') {
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_MUL_ASSIGN, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_ASTERISK, -1, 0);
+            }
+        }
+        if (c == ',') {
             next(1);
-            return vtoken_new(TOKEN_ASTERISK, -1, 0);
+            return vtoken_new(TOKEN_COMMA, -1, 0);
+        }
+        if (c == '.') {
+            if (is_digit(peek(1))) {
+                return scan_number();
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_DOT, -1, 0);
+            }
+        }
+        if (c == '[') {
+            next(1);
+            return vtoken_new(TOKEN_LBRACE, -1, 0);
+        }
+        if (c == ']') {
+            next(1);
+            return vtoken_new(TOKEN_RBRACE, -1, 0);
+        }
+        if (c == '!') {
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_NOT_EQ, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_TERNARY, -1, 0);
+            }
+        }
+        if (c == '>') {
+            // to do shift & shift equal
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_GTEQ, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_GT, -1, 0);
+            }
+        }
+        if (c == '<') {
+            // to do shift & shift equal
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_LTEQ, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_LT, -1, 0);
+            }
+        }
+        if (c == '=') {
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_EQ, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_ASSIGN, -1, 0);
+            }
+        }
+        if (c == '+') {
+            if (peek(1) == '=') {
+                next(2);
+                return vtoken_new(TOKEN_ADD_ASSIGN, -1, 0);
+            }
+            if (peek(1) == '+') {
+                next(2);
+                return vtoken_new(TOKEN_INC, -1, 0);
+            } else {
+                next(1);
+                return vtoken_new(TOKEN_ADD, -1, 0);
+            }
         }
         if (c == '-') {
             if (peek(1) == '=') {
@@ -383,10 +468,10 @@ _lex_loop:
             }
         }
         // identifiers and keywords don't start with digit, only numbers
-        if (isdigit(c)) {
+        if (is_digit(c)) {
             return scan_number();
-        } else {
-            // identifiers and keywords
+        }
+        if (is_alpha(c)) {
             return scan_identifier();
         }
         errors("Unknown or unimplemented token!");
