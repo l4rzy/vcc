@@ -11,6 +11,7 @@ static int filebufptr; // pointer to file buffer
 static char fname[256]; // name of lexing file
 
 static int line; // current line
+static int col; // current column
 static int c; // current char
 static char buf[BUF_MAX_SIZE]; // buffer to save temp stream
 static int buflen; // len of buf for scanning
@@ -20,6 +21,7 @@ static int lastlex; // return value of the last lex call
 
 /* static funtion declarations
  */
+static void reset_buf();
 static char peek(int);
 static int discard_until(char);
 static char next(int);
@@ -53,6 +55,12 @@ static const char *keyword_tbl[] = {
 };
 
 #undef INIT_KWORD
+
+/* resets temp buffer
+ */
+static void reset_buf() {
+    bzero(buf, BUF_MAX_SIZE);
+}
 
 /* creates new token from filebuf
  */
@@ -102,8 +110,10 @@ static char next(int n) {
     assert(filebufptr + n < filebuf->len);
     filebufptr += n;
     c = filebuf->s[filebufptr];
+    ++col;
     if (c == '\n') {
         ++line;
+        col = 0;
     }
     return c;
 }
@@ -150,6 +160,7 @@ static vtoken_t *scan_char() {
 }
 
 static vtoken_t *scan_number() {
+    reset_buf();
     buflen = 0;
     int dotcount = 0;
     int tt = TOKEN_INT;
@@ -235,18 +246,18 @@ static int identifier_test(int keyword) {
 static vtoken_t *scan_identifier() {
     logs("scanning identifiers\n");
     // init buffer state
+    reset_buf();
     buflen = 0;
     while (1) {
         if (is_alpha(c)) {
             buf[buflen++] = c;
-        }
-        next(1);
-        if (c == '\n' || c == ' ') {
-            logf("ended identifier, buf = %s\n", buf);
+            next(1);
+        } else {
             break;
         }
     }
-    return vtoken_new_from_buf(TOKEN_IDENTIFIER);
+    vtoken_t *t = vtoken_new_from_buf(TOKEN_IDENTIFIER);
+    return t;
 }
 
 int lex_init(const char *_fname) {
@@ -260,6 +271,7 @@ int lex_init(const char *_fname) {
     // init variables
     strncpy(fname, _fname, 255);
     line = 1;
+    col = 0;
     filebufptr = -1;
     buflen = 0;
     lastlex = 0;
@@ -287,7 +299,7 @@ _lex_loop:
             // it's safe to continue here since we filter new line in next(1)
             goto _lex_loop;
         }
-        logf("c = %c\n", c);
+        logf("line %d col %d | c = %c\n", line, col, c);
         if (c == '#') {
             logf("Preprocessor procedure on line %d\n", line);
             discard_until('\n');

@@ -26,8 +26,8 @@
 
 /* error macros use by compiler, not to debug */
 #define errorf(fmt, ...) \
-    fprintf(stderr, "[" PHASE "]@%s:%d "fmt,                                                       \
-            fname, line, __VA_ARGS__)
+    fprintf(stderr, "[" PHASE "]@%s:%d:%d "fmt,                                                    \
+            fname, line, col, __VA_ARGS__)
 
 #define errors(str) \
     errorf("%s\n", str)

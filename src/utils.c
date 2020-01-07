@@ -36,6 +36,7 @@ buf_t *buf_new_from_mem(char *mem, size_t size) {
     buf_t *b = xalloc(sizeof(buf_t));
     b->s = xalloc(size + 1);
     memcpy(b->s, mem, size);
+    b->len = size;
 }
 
 void buf_free(buf_t *buf) {
