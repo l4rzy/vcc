@@ -25,4 +25,5 @@ int main(int argc, char *argv[]) {
         print_tok(t);
         vtoken_free(t);
     } while (t->type != TOKEN_EOF);
+    lex_fin();
 }

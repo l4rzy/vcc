@@ -15,7 +15,6 @@ static int col; // current column
 static int c; // current char
 static char buf[BUF_MAX_SIZE]; // buffer to save temp stream
 static int buflen; // len of buf for scanning
-static vtoken_t *token;
 
 static int lastlex; // return value of the last lex call
 
@@ -120,14 +119,6 @@ static char next(int n) {
         ++line;
         col = 0;
     }
-    return c;
-}
-
-/* eats current char, and goes to next char
- */
-static char eat() {
-    buf[buflen++] = c;
-    next(1);
     return c;
 }
 
@@ -281,7 +272,7 @@ int lex_init(const char *_fname) {
     if (!fp) {
         fatalf("Could not open `%s` to read\n", fname);
     }
-    logf("Opened `%s` at %p\n", _fname, fp);
+    logf("Opened `%s` at %p\n", _fname, (void *)fp);
     // copy file data to buffer
     filebuf = buf_new_from_file(fp);
     // init variables
@@ -298,6 +289,7 @@ int lex_init(const char *_fname) {
 /* free resources
  */
 int lex_fin() {
+    logs("freeing resources\n");
     buf_free(filebuf);
     return 0;
 }
