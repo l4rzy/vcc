@@ -310,164 +310,154 @@ _lex_loop:
             goto _lex_loop;
         }
         logf("line %d col %d | c = '%c'\n", line, col, c);
-        if (c == '#') {
-            logf("Preprocessor procedure on line %d\n", line);
-            discard_until('\n');
-            goto _lex_loop;
-        }
-        if (c == '\'') {
-            logf("Scanning char on line %d\n", line);
-            return scan_char();
-        }
-        if (c == '"') {
-            logf("Scanning string on line %d\n", line);
-            return scan_string();
-        }
-        if (c == '/') {
-            if (peek(1) == '/') {
-                logf("C++ comment on line %d\n", line);
+        switch (c) {
+            case '#':
+                logf("Preprocessor procedure on line %d\n", line);
                 discard_until('\n');
-                goto _lex_loop; // skip to the next real token
-            }
-            if (peek(1) == '*') {
-                logf("C comment on line %d\n", line);
-                lastlex = scan_comment();
-                if (lastlex == 0) {
+                goto _lex_loop;
+            case '\'':
+                logf("Scanning char on line %d\n", line);
+                return scan_char();
+            case '"':
+                logf("Scanning string on line %d\n", line);
+                return scan_string();
+            case '/':
+                if (peek(1) == '/') {
+                    logf("C++ comment on line %d\n", line);
+                    discard_until('\n');
                     goto _lex_loop; // skip to the next real token
                 }
-                // return error
+                if (peek(1) == '*') {
+                    logf("C comment on line %d\n", line);
+                    lastlex = scan_comment();
+                    if (lastlex == 0) {
+                        goto _lex_loop; // skip to the next real token
+                    }
+                    // return error
+                    return NULL;
+                }
+                if (peek(1) == '=') {
+                    // this is the case of division operation
+                    next(2);
+                    return vtoken_new(TOKEN_DIV_ASSIGN, -1, 0);
+                }
+                break;
+            case ';':
+                next(1);
+                return vtoken_new(TOKEN_SEMICOLON, -1, 0);
+            case '(':
+                next(1);
+                return vtoken_new(TOKEN_LBRACKET, -1, 0);
+            case ')':
+                next(1);
+                return vtoken_new(TOKEN_RBRACKET, -1, 0);
+            case '{':
+                next(1);
+                return vtoken_new(TOKEN_LPAREN, -1, 0);
+            case '}':
+                next(1);
+                return vtoken_new(TOKEN_RPAREN, -1, 0);
+            case '*':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_MUL_ASSIGN, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_ASTERISK, -1, 0);
+                }
+                break;
+            case ',':
+                next(1);
+                return vtoken_new(TOKEN_COMMA, -1, 0);
+            case '.':
+                if (is_digit(peek(1))) {
+                    return scan_number();
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_DOT, -1, 0);
+                }
+            case '[':
+                next(1);
+                return vtoken_new(TOKEN_LBRACE, -1, 0);
+            case ']':
+                next(1);
+                return vtoken_new(TOKEN_RBRACE, -1, 0);
+            case '!':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_NOT_EQ, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_TERNARY, -1, 0);
+                }
+                break;
+            case '>':
+                // to do shift & shift equal
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_GTEQ, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_GT, -1, 0);
+                }
+                break;
+            case '<':
+                // to do shift & shift equal
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_LTEQ, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_LT, -1, 0);
+                }
+            case '=':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_EQ, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_ASSIGN, -1, 0);
+                }
+                break;
+            case '+':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_ADD_ASSIGN, -1, 0);
+                }
+                if (peek(1) == '+') {
+                    next(2);
+                    return vtoken_new(TOKEN_INC, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_ADD, -1, 0);
+                }
+                break;
+            case '-':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_SUB_ASSIGN, -1, 0);
+                } else if (peek(1) == '>') {
+                    next(2);
+                    return vtoken_new(TOKEN_POINTER, -1, 0);
+                } else if (peek(1) == '-') {
+                    next(2);
+                    return vtoken_new(TOKEN_DEC, -1, 0);
+                } else {
+                    next(1);
+                    return vtoken_new(TOKEN_SUB, -1, 0);
+                }
+                break;
+            default:
+                // identifiers and keywords don't start with digit, only numbers
+                if (is_digit(c)) {
+                    return scan_number();
+                }
+                if (is_alpha(c)) {
+                    return scan_identifier();
+                }
+                errors("Unknown or unimplemented token!");
                 return NULL;
-            }
-            if (peek(1) == '=') {
-                // this is the case of division operation
-                next(2);
-                return vtoken_new(TOKEN_DIV_ASSIGN, -1, 0);
-            }
         }
-        if (c == ';') {
-            next(1);
-            return vtoken_new(TOKEN_SEMICOLON, -1, 0);
-        }
-        if (c == '(') {
-            next(1);
-            return vtoken_new(TOKEN_LBRACKET, -1, 0);
-        }
-        if (c == ')') {
-            next(1);
-            return vtoken_new(TOKEN_RBRACKET, -1, 0);
-        }
-        if (c == '{') {
-            next(1);
-            return vtoken_new(TOKEN_LPAREN, -1, 0);
-        }
-        if (c == '}') {
-            next(1);
-            return vtoken_new(TOKEN_RPAREN, -1, 0);
-        }
-        if (c == '*') {
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_MUL_ASSIGN, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_ASTERISK, -1, 0);
-            }
-        }
-        if (c == ',') {
-            next(1);
-            return vtoken_new(TOKEN_COMMA, -1, 0);
-        }
-        if (c == '.') {
-            if (is_digit(peek(1))) {
-                return scan_number();
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_DOT, -1, 0);
-            }
-        }
-        if (c == '[') {
-            next(1);
-            return vtoken_new(TOKEN_LBRACE, -1, 0);
-        }
-        if (c == ']') {
-            next(1);
-            return vtoken_new(TOKEN_RBRACE, -1, 0);
-        }
-        if (c == '!') {
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_NOT_EQ, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_TERNARY, -1, 0);
-            }
-        }
-        if (c == '>') {
-            // to do shift & shift equal
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_GTEQ, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_GT, -1, 0);
-            }
-        }
-        if (c == '<') {
-            // to do shift & shift equal
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_LTEQ, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_LT, -1, 0);
-            }
-        }
-        if (c == '=') {
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_EQ, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_ASSIGN, -1, 0);
-            }
-        }
-        if (c == '+') {
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_ADD_ASSIGN, -1, 0);
-            }
-            if (peek(1) == '+') {
-                next(2);
-                return vtoken_new(TOKEN_INC, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_ADD, -1, 0);
-            }
-        }
-        if (c == '-') {
-            if (peek(1) == '=') {
-                next(2);
-                return vtoken_new(TOKEN_SUB_ASSIGN, -1, 0);
-            } else if (peek(1) == '>') {
-                next(2);
-                return vtoken_new(TOKEN_POINTER, -1, 0);
-            } else if (peek(1) == '-') {
-                next(2);
-                return vtoken_new(TOKEN_DEC, -1, 0);
-            } else {
-                next(1);
-                return vtoken_new(TOKEN_SUB, -1, 0);
-            }
-        }
-        // identifiers and keywords don't start with digit, only numbers
-        if (is_digit(c)) {
-            return scan_number();
-        }
-        if (is_alpha(c)) {
-            return scan_identifier();
-        }
-        errors("Unknown or unimplemented token!");
-        return NULL;
     } else {
         /* add the final token: the EOF
          */
