@@ -1,4 +1,4 @@
 sources += files(
-    'lexer.c',
-    'utils.c'
-)
+               'lexer.c',
+               'utils.c'
+           )

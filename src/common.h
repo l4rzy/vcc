@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef ENABLE_DEBUG
 #define logf(fmt, ...) \
@@ -26,7 +27,7 @@
 /* error macros use by compiler, not to debug */
 #define errorf(fmt, ...) \
     fprintf(stderr, "[" PHASE "]@%s:%d "fmt,                                                       \
-             fname, line, __VA_ARGS__)
+            fname, line, __VA_ARGS__)
 
 #define errors(str) \
     errorf("%s\n", str)

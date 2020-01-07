@@ -1,8 +1,9 @@
 #include "src/lexer.h"
 #include "src/utils.h"
 
-int print_tok(vtoken_t *t) {
+/* ad */ int /* a dumb comment */ print_tok(vtoken_t *t) {
     printf("token.type = %d\n", t->type);
+    printf("token.value = %s\n", t->value->s);
     return 0;
 }
 
@@ -15,6 +16,10 @@ int main(int argc, char *argv[]) {
     lex_init(argv[1]);
     do {
         t = lex();
+        if (t == NULL) {
+            return 0;
+        }
         print_tok(t);
+        vtoken_free(t);
     } while (t->type != TOKEN_EOF);
 }

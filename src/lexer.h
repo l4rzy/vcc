@@ -2,6 +2,7 @@
 #define _LEXER_H_
 
 #include "common.h"
+#include "utils.h"
 #include <ctype.h>
 
 #define BUF_MAX_SIZE            1024        // token content in buffer
@@ -9,6 +10,8 @@
 
 enum {
     LEX_ERR_NONE,
+    LEX_ERR_IO,
+    LEX_ERR_NOMEM,
     LEX_ERR_UNKNOWN
 };
 
@@ -33,6 +36,7 @@ enum {
     KWORD_for,
     KWORD_switch,
     KWORD_case,
+    KWORD_typedef,
     KWORD_default
 };
 
@@ -108,9 +112,18 @@ enum {
 
 typedef struct _vtoken_t {
     int type;
-    int ptr_start;
-    int ptr_end;
+    buf_t *value;
 } vtoken_t;
+
+vtoken_t *vtoken_new(int, int, int);
+vtoken_t *vtoken_new_from_buf(int);
+void vtoken_free(vtoken_t *);
+
+typedef struct _lex_error_t {
+    int code;
+    int line;
+    buf_t *s;
+} lex_error_t;
 
 int lex_init(const char *fname);
 int lex_fin();

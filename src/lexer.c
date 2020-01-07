@@ -2,11 +2,11 @@
 
 /* for error emitting
  */
-#define PHASE "LEX"
+#define PHASE "lexing"
 
 /* internal variables
  */
-static char *filebuf;  // the current source code file
+static buf_t *filebuf;
 static int filebufptr; // pointer to file buffer
 static char fname[256]; // name of lexing file
 
@@ -14,15 +14,15 @@ static int line; // current line
 static int c; // current char
 static char buf[BUF_MAX_SIZE]; // buffer to save temp stream
 static int buflen; // len of buf for scanning
-static vtoken_t token;
+static vtoken_t *token;
 
 static int lastlex; // return value of the last lex call
 
 /* static funtion declarations
  */
-static char peek();
+static char peek(int);
 static int discard_until(char);
-static char next();
+static char next(int);
 
 #define INIT_KWORD(kw) \
     [KWORD_##kw] = #kw,
@@ -48,15 +48,40 @@ static const char *keyword_tbl[] = {
     INIT_KWORD(for)
     INIT_KWORD(switch)
     INIT_KWORD(case)
+    INIT_KWORD(typedef)
     INIT_KWORD(default)
 };
 
 #undef INIT_KWORD
 
+/* creates new token from filebuf
+ */
+vtoken_t *vtoken_new(int type, int start, int len) {
+    vtoken_t *tok = xalloc(sizeof(vtoken_t));
+    tok->type = type;
+    tok->value = buf_new_from_mem(filebuf->s + start, len);
+    return tok;
+}
+
+/* creates new token from buf
+ */
+vtoken_t *vtoken_new_from_buf(int type) {
+    vtoken_t *tok = xalloc(sizeof(vtoken_t));
+    tok->type = type;
+    tok->value = buf_new_from_mem(buf, buflen);
+    return tok;
+}
+
+void vtoken_free(vtoken_t *token) {
+    free(token->value);
+}
+
 /* looks for next char in buf without increasing filebufptr
  */
 static char peek(int n) {
-    char p = filebuf[filebufptr+n];
+    int ptr = filebufptr + n;
+    assert(ptr < filebuf->len);
+    char p = filebuf->s[ptr];
     return p;
 }
 
@@ -74,14 +99,16 @@ static int discard_until(char ch) {
 /* gets next char
  */
 static char next(int n) {
-    c = filebuf[filebufptr += n];
+    assert(filebufptr + n < filebuf->len);
+    filebufptr += n;
+    c = filebuf->s[filebufptr];
     if (c == '\n') {
         ++line;
     }
     return c;
 }
 
-/* eats current char
+/* eats current char, and goes to next char
  */
 static char eat() {
     buf[buflen++] = c;
@@ -99,79 +126,85 @@ static int is_digit() {
  */
 static int is_alpha() {
     return ((c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z') ||
-        (c == '_'));
+            (c >= 'A' && c <= 'Z') ||
+            (c == '_'));
 }
 
 /* =================== SCANNERS ==================== */
-static int scan_char() {
+static vtoken_t *scan_char() {
     // set token type
-    token.type = TOKEN_CHAR;
-    token.ptr_start = filebufptr;
     next(1); // skip first delimiter;
     if (c == '\'') {
         errors("Empty between character delimiter\n");
-        return -1;
+        return NULL;
     }
-    if (c == '\\' && peek(1) == '\'') {
-        next(1);
-        token.ptr_end = filebufptr;
-        // save escaped char to token
+    if (c == '\\' && peek(2) == '\'') {
+        return vtoken_new(TOKEN_CHAR, filebufptr, 2);
+    } else if (peek(1) == '\'') { // a normal char
+        return vtoken_new(TOKEN_CHAR, filebufptr, 1);
+    } else {
+        errors("Wrong or unsupported character");
+        return NULL;
     }
-    if (peek(1) == '\'') {
-        next(1); // skip second delimiter
-        return 0;
-    }
-    return 0;
+    return NULL;
 }
 
-static int scan_number() {
-    token.type = TOKEN_INT;
+static vtoken_t *scan_number() {
     buflen = 0;
+    int dotcount = 0;
+    int tt = TOKEN_INT;
     while (1) {
         if (c == '.') {
-            token.type = TOKEN_FLOAT;
-            eat();
-            continue;
+            if (dotcount == 0) {
+                tt = TOKEN_FLOAT;
+                eat();
+                continue;
+            } else {
+                errors("wrong float format\n");
+                return NULL;
+            }
         }
-        if (isdigit(c)) {
+        if (is_digit(c)) {
             eat();
             continue;
         } else {
             errors("Invalid number?");
-            return -1;
+            return NULL;
         }
         // number postfix etc.
         logf("parsed number: %s\n", buf);
+        vtoken_t *tok = vtoken_new_from_buf(tt);
+        return tok;
     }
-    return 0;
+    return NULL;
 }
 
-static int scan_string() {
+static vtoken_t *scan_string() {
+    int len = -1;
+    int start = filebufptr + 1;
     while (1) {
         next(1); // skip the first string delimiter
+        ++len;
         if (c == EOF) {
             errors("String has no ending delimiter\n");
-            return -1;
+            return NULL;
         }
         if (c == '\\' && peek(1) == '"') {
-            next(1);
+            next(2);
+            len += 2;
             continue;
         }
         if (c == '"') {
             next(1); // skip the second string delimiter, done
-            buf[buflen] = '\0';
-            break;
+            return vtoken_new(TOKEN_STR, start, len);
         }
-        buf[buflen++] = c;
     }
-    buflen = 0;
-    return 0;
+    return NULL;
 }
 
 /* scan and deal with nested C-style comments
  */
-int scan_comment() {
+static int scan_comment() {
     /* maintain a stack that counts the number of comments in total
      */
     int stack = 1;
@@ -195,37 +228,40 @@ int scan_comment() {
     return 0;
 }
 
-int scan_identifier() {
-    
+static int identifier_test(int keyword) {
+    return 0;
 }
 
-long file_size(FILE *fp) {
-    fseek(fp, 0, SEEK_END);
-    long result = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    return result;
+static vtoken_t *scan_identifier() {
+    logs("scanning identifiers\n");
+    // init buffer state
+    buflen = 0;
+    while (1) {
+        if (is_alpha(c)) {
+            buf[buflen++] = c;
+        }
+        next(1);
+        if (c == '\n' || c == ' ') {
+            logf("ended identifier, buf = %s\n", buf);
+            break;
+        }
+    }
+    return vtoken_new_from_buf(TOKEN_IDENTIFIER);
 }
 
 int lex_init(const char *_fname) {
-    strncpy(fname, _fname, 255);
-    line = 1;
-    FILE *fp = fopen(fname, "rb");
+    FILE *fp = fopen(_fname, "rb");
     if (!fp) {
         fatalf("Could not open `%s` to read\n", fname);
     }
-    logf("Opened `%s` at %p\n", fname, fp);
-    buflen = 0;
-
+    logf("Opened `%s` at %p\n", _fname, fp);
     // copy file data to buffer
-    int len = file_size(fp);
-    filebuf = malloc(len+1);
-    if (!filebuf) {
-        fatals("Can not allocate memory");
-    }
-
-    fread(filebuf, len, 1, fp);
-    filebufptr = 0;
-    
+    filebuf = buf_new_from_file(fp);
+    // init variables
+    strncpy(fname, _fname, 255);
+    line = 1;
+    filebufptr = -1;
+    buflen = 0;
     lastlex = 0;
     return 0;
 }
@@ -233,17 +269,17 @@ int lex_init(const char *_fname) {
 /* free resources
  */
 int lex_fin() {
-    free(filebuf);
+    buf_free(filebuf);
     return 0;
 }
 
-static int next_token() {
+static vtoken_t *next_token() {
 _lex_loop:
     logs("lexing next token\n");
     // skip lexing if the last lex failed
     if (lastlex != 0) {
         logs("Last lex() failed, skipping\n");
-        return -1;
+        return NULL;
     }
     // ignore white spaces
     if (next(1) != EOF) {
@@ -251,6 +287,7 @@ _lex_loop:
             // it's safe to continue here since we filter new line in next(1)
             goto _lex_loop;
         }
+        logf("c = %c\n", c);
         if (c == '#') {
             logf("Preprocessor procedure on line %d\n", line);
             discard_until('\n');
@@ -272,17 +309,17 @@ _lex_loop:
             }
             if (peek(1) == '*') {
                 logf("C comment on line %d\n", line);
-                int r = scan_comment();
-                if (r == 0) {
+                lastlex = scan_comment();
+                if (lastlex == 0) {
                     logf("C comment ended on line %d\n", line);
                     goto _lex_loop; // skip to the next real token
                 }
                 // return error
-                return r;
+                return NULL;
             }
             if (peek(1) == '=') {
                 // this is the case of division operation
-                token.type = TOKEN_DIV_ASSIGN;
+                token->type = TOKEN_DIV_ASSIGN;
                 next(1);
                 return 0;
             }
@@ -295,15 +332,14 @@ _lex_loop:
             return scan_identifier();
         }
         errors("Unknown or unimplemented token!");
-        return -1;
+        return NULL;
     } else {
         /* add the final token: the EOF
          */
         logs("Reached EOF\n");
-        token.type = TOKEN_EOF;
-        return 0;
+        return vtoken_new(TOKEN_EOF, filebufptr, 0);
     }
-    return 0;
+    return NULL;
 }
 
 /* this function is called by parser to
@@ -313,13 +349,5 @@ vtoken_t *lex() {
     if (lastlex != 0) {
         fatals("Last lex() failed, abort!\n");
     }
-
-    errorf("line: %d buf pointer: %d\n", line, filebufptr);
-    lastlex = next_token();
-    if (lastlex == 0) {
-        return &token;
-    }
-    else {
-        return NULL;
-    }
+    return next_token();
 }
