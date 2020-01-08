@@ -151,10 +151,15 @@ static vtoken_t *scan_char() {
         return NULL;
     }
     if (c == '\\' && peek(2) == '\'') {
-        return vtoken_new(TOKEN_CHAR, filebufptr, 2);
+        vtoken_t *t = vtoken_new(TOKEN_CHAR, filebufptr, 2);
+        next(3);
+        return t;
     } else if (peek(1) == '\'') { // a normal char
-        return vtoken_new(TOKEN_CHAR, filebufptr, 1);
+        vtoken_t *t = vtoken_new(TOKEN_CHAR, filebufptr, 1);
+        next(2);
+        return t;
     } else {
+        lastlex = 1;
         errors("Wrong or unsupported character");
         return NULL;
     }
@@ -321,16 +326,19 @@ _lex_loop:
         }
         logf("line %d col %d | c = '%c'\n", line, col, c);
         switch (c) {
-            case '#':
+            case '#': // currently treat preprocessing statements as comments
                 logf("Preprocessor procedure on line %d\n", line);
                 discard_until('\n');
                 goto _lex_loop;
+                
             case '\'':
                 logf("Scanning char on line %d\n", line);
                 return scan_char();
+                
             case '"':
                 logf("Scanning string on line %d\n", line);
                 return scan_string();
+                
             case '/':
                 if (peek(1) == '/') {
                     logf("C++ comment on line %d\n", line);
@@ -351,41 +359,47 @@ _lex_loop:
                     next(2);
                     return vtoken_new(TOKEN_DIV_ASSIGN, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_DIV, -1, 0);
+                
             case ';':
                 next(1);
                 return vtoken_new(TOKEN_SEMICOLON, -1, 0);
+                
             case '(':
                 next(1);
                 return vtoken_new(TOKEN_LBRACKET, -1, 0);
+                
             case ')':
                 next(1);
                 return vtoken_new(TOKEN_RBRACKET, -1, 0);
+                
             case '{':
                 next(1);
                 return vtoken_new(TOKEN_LPAREN, -1, 0);
+                
             case '}':
                 next(1);
                 return vtoken_new(TOKEN_RPAREN, -1, 0);
+                
             case '*':
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_MUL_ASSIGN, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_ASTERISK, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_ASTERISK, -1, 0);
+                
             case ',':
                 next(1);
                 return vtoken_new(TOKEN_COMMA, -1, 0);
             case '.':
                 if (is_digit(peek(1))) {
                     return scan_number();
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_DOT, -1, 0);
                 }
+                next(1);
+                return vtoken_new(TOKEN_DOT, -1, 0);
+                
             case '[':
                 next(1);
                 return vtoken_new(TOKEN_LBRACE, -1, 0);
@@ -396,39 +410,64 @@ _lex_loop:
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_NOT_EQ, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_TERNARY, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_TERNARY, -1, 0);
+                
             case '>':
                 // to do shift & shift equal
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_GTEQ, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_GT, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_GT, -1, 0);
+
             case '<':
                 // to do shift & shift equal
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_LTEQ, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_LT, -1, 0);
                 }
+                next(1);
+                return vtoken_new(TOKEN_LT, -1, 0);
+
             case '=':
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_EQ, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_ASSIGN, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_ASSIGN, -1, 0);
+
+            case '|':
+                if (peek(1) ==  '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_OR_ASSIGN, -1, 0);
+                }
+                if (peek(1) ==  '|') {
+                    next(2);
+                    return vtoken_new(TOKEN_OR_OR, -1, 0);
+                }
+                next(1);
+                return vtoken_new(TOKEN_OR, -1, 0);
+
+            case '&':
+                if (peek(1) == '&') {
+                    next(2);
+                    return vtoken_new(TOKEN_AND_AND, -1, 0);
+                }
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_AND_ASSIGN, -1, 0);
+                }
+                next(1);
+                return vtoken_new(TOKEN_AND, -1, 0);
+
+            case ':':
+                next(1);
+                return vtoken_new(TOKEN_COLON, -1, 0);
+                
             case '+':
                 if (peek(1) == '=') {
                     next(2);
@@ -437,26 +476,26 @@ _lex_loop:
                 if (peek(1) == '+') {
                     next(2);
                     return vtoken_new(TOKEN_INC, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_ADD, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_ADD, -1, 0);
+
             case '-':
                 if (peek(1) == '=') {
                     next(2);
                     return vtoken_new(TOKEN_SUB_ASSIGN, -1, 0);
-                } else if (peek(1) == '>') {
+                }
+                if (peek(1) == '>') {
                     next(2);
                     return vtoken_new(TOKEN_POINTER, -1, 0);
-                } else if (peek(1) == '-') {
+                }
+                if (peek(1) == '-') {
                     next(2);
                     return vtoken_new(TOKEN_DEC, -1, 0);
-                } else {
-                    next(1);
-                    return vtoken_new(TOKEN_SUB, -1, 0);
                 }
-                break;
+                next(1);
+                return vtoken_new(TOKEN_SUB, -1, 0);
+                
             default:
                 // identifiers and keywords don't start with digit, only numbers
                 if (is_digit(c)) {
