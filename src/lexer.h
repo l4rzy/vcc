@@ -113,6 +113,8 @@ enum {
     NUM_TOKENS
 };
 
+const char* token_names[NUM_TOKENS];
+
 typedef struct _vtoken_t {
     int type;
     buf_t *value;

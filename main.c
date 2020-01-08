@@ -3,9 +3,12 @@
 
 // print token
 int print_tok(vtoken_t *t) {
-    printf("token.type = %d\n", t->type);
+    printf("(%s", token_names[t->type]);
     if (t->value) {
-        printf("token.value = %s\n", t->value->s);
+        printf(":\"%s\")\n", t->value->s);
+    }
+    else {
+        printf(")\n");
     }
     return 0;
 }

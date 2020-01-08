@@ -55,6 +55,74 @@ static const char *keyword_tbl[] = {
 
 #undef INIT_KWORD
 
+#define TOKEN(tok) \
+    [TOKEN_##tok] = #tok,
+const char *token_names[] = {
+    TOKEN(EOF) // end of file
+    TOKEN(KEYWORD)
+    TOKEN(IDENTIFIER)
+    TOKEN(INT)
+    TOKEN(FLOAT)
+    TOKEN(CHAR)
+    TOKEN(STR)
+    /* punctuations
+     */
+    TOKEN(COLON) // :
+    TOKEN(LPAREN) // (
+    TOKEN(RPAREN) // )
+    TOKEN(LBRACE) // {
+    TOKEN(RBRACE) // }
+    TOKEN(LBRACKET) // [
+    TOKEN(RBRACKET) // ]
+    TOKEN(COMMA) // )
+    TOKEN(DOT) // .
+    TOKEN(QUESTION) // ?
+    TOKEN(SEMICOLON) // ;
+    /* bitwise operators
+     */
+    TOKEN(XOR) // ^
+    TOKEN(OR) // |
+    TOKEN(AND) // &
+    TOKEN(LSHIFT) // <<
+    TOKEN(RSHIFT) // >>
+    /* math operators
+     */
+    TOKEN(ADD) // +
+    TOKEN(SUB) // -
+    TOKEN(ASTERISK) // *
+    TOKEN(DIV) // /
+    TOKEN(MOD) // %
+    TOKEN(EQ) // ==
+    TOKEN(NOT_EQ) // !=
+    TOKEN(LT) // <
+    TOKEN(GT) // >
+    TOKEN(LTEQ) // <=
+    TOKEN(GTEQ) // >=
+    TOKEN(INC) // ++
+    TOKEN(DEC) // --
+    /* logic operators
+     */
+    TOKEN(TERNARY) // !
+    TOKEN(AND_AND) // &&
+    TOKEN(OR_OR) // ||
+    /* assign operators
+     */
+    TOKEN(ASSIGN) // =
+    TOKEN(ADD_ASSIGN) // +=
+    TOKEN(SUB_ASSIGN) // -=
+    TOKEN(OR_ASSIGN) // |=
+    TOKEN(AND_ASSIGN) // &=
+    TOKEN(XOR_ASSIGN) // ^=
+    TOKEN(LSHIFT_ASSIGN) // <<=
+    TOKEN(RSHIFT_ASSIGN) // >>=
+    TOKEN(MUL_ASSIGN) // *=
+    TOKEN(DIV_ASSIGN) // /=
+    TOKEN(MOD_ASSIGN) // %=
+
+    [TOKEN_POINTER] = "POINTER" // ->
+};
+#undef TOKEN
+
 /* resets temp buffer
  */
 static void reset_buf() {
@@ -160,7 +228,7 @@ static vtoken_t *scan_char() {
         return t;
     } else {
         lastlex = 1;
-        errors("Wrong or unsupported character");
+        errors("Wrong or unsupported character, or use `\"` if it is a string");
         return NULL;
     }
     return NULL;
@@ -257,6 +325,8 @@ static int scan_comment() {
     return 0;
 }
 
+/* tests buf to check if it's a keyword
+ */
 static int identifier_test() {
     return 0;
 }
@@ -463,6 +533,14 @@ _lex_loop:
                 }
                 next(1);
                 return vtoken_new(TOKEN_AND, -1, 0);
+
+            case '%':
+                if (peek(1) == '=') {
+                    next(2);
+                    return vtoken_new(TOKEN_MOD_ASSIGN, -1, 0);
+                }
+                next(1);
+                return vtoken_new(TOKEN_ASSIGN, -1, 0);
 
             case ':':
                 next(1);
