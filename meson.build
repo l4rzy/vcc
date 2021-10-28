@@ -6,7 +6,6 @@ project('vcc', ['c'],
 c_args = [
     '-O0',
     '-g',
-    '-pedantic',
     '-DENABLE_DEBUG'
 ]
 
