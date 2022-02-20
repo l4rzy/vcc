@@ -6,7 +6,7 @@ project('vcc', ['c'],
 c_args = [
     '-O0',
     '-g',
-    '-DENABLE_DEBUG'
+    '-DENABLE_DEBUGx'
 ]
 
 sources = files(

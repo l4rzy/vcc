@@ -1,8 +1,9 @@
 #ifndef _LEXER_H_
 #define _LEXER_H_
 
-#include "common.h"
-#include "utils.h"
+#include "error.h"
+#include "mem.h"
+#include "vcc.h"
 #include <ctype.h>
 
 #define BUF_EOF '\0'
@@ -115,8 +116,8 @@ typedef struct _vtoken_t {
   buf_t *value;
 } vtoken_t;
 
-vtoken_t *vtoken_new(int, int, int);
-vtoken_t *vtoken_new_from_buf(int);
+// vtoken_t *vtoken_new(int, int, int);
+// vtoken_t *vtoken_new_from_buf(int);
 void vtoken_free(vtoken_t *);
 
 typedef struct _lex_error_t {
@@ -125,8 +126,21 @@ typedef struct _lex_error_t {
   buf_t *s;
 } lex_error_t;
 
-int lex_init(const char *fname);
-int lex_fin();
+typedef struct _vcc_lexer_t {
+  buf_t *filebuf;         // code buffer
+  int filebufptr;         // pointer to file buffer
+  char fname[256];        // name of lexed file
+  int line;               // current line
+  int col;                // current column
+  int c;                  // current char
+  char buf[BUF_MAX_SIZE]; // buffer to save temp stream
+  int buflen;             // len of buf for scanning
+
+  int lastlex; // return value of the last lex call
+} vcc_lexer_t;
+
+int lexer_init(const char *fname);
+int lexer_finish();
 vtoken_t *lex();
 
 #endif

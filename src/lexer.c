@@ -6,7 +6,8 @@
 
 /* internal variables
  */
-static buf_t *filebuf;
+
+static buf_t *filebuf;  // code buffer
 static int filebufptr;  // pointer to file buffer
 static char fname[256]; // name of lexing file
 
@@ -18,6 +19,9 @@ static int buflen;             // len of buf for scanning
 
 static int lastlex; // return value of the last lex call
 
+// TODO: save internal variables to an object
+// static vcc_lexer_t *lexer;
+
 /* static funtion declarations
  */
 static void reset_buf();
@@ -25,40 +29,43 @@ static char peek(int);
 static int discard_until(char);
 static char next(int);
 
-#define INIT_KWORD(kw) [KWORD_##kw] = #kw,
+#define KWORD(kw) [KWORD_##kw] = #kw,
 
 /* table of reserved keywords
  */
 static const char *keyword_tbl[] = {
-    [KWORD_none] = "",
-    INIT_KWORD(enum)
-    INIT_KWORD(struct)
-    INIT_KWORD(union)
-    INIT_KWORD(const)
-    INIT_KWORD(static)
-    INIT_KWORD(goto)
-    INIT_KWORD(sizeof)
-    INIT_KWORD(break)
-    INIT_KWORD(continue)
-    INIT_KWORD(return)
-    INIT_KWORD(if)
-    INIT_KWORD(else)
-    INIT_KWORD(while)
-    INIT_KWORD(do)
-    INIT_KWORD(for)
-    INIT_KWORD(switch)
-    INIT_KWORD(case)
-    INIT_KWORD(typedef)
-    INIT_KWORD(default)
+    KWORD(enum)
+    KWORD(struct)
+    KWORD(union)
+    KWORD(const)
+    KWORD(static)
+    KWORD(goto)
+    KWORD(sizeof)
+    KWORD(break)
+    KWORD(continue)
+    KWORD(return)
+    KWORD(if)
+    KWORD(else)
+    KWORD(while)
+    KWORD(do)
+    KWORD(for)
+    KWORD(switch)
+    KWORD(case)
+    KWORD(typedef)
+    KWORD(default)
 };
 
-#undef INIT_KWORD
+#undef KWORD
 
 #define TOKEN(tok) [TOKEN_##tok] = #tok,
 const char *token_names[] = {
-    TOKEN(EOF) // end of file
-    TOKEN(KEYWORD) TOKEN(IDENTIFIER) TOKEN(INT) TOKEN(FLOAT) TOKEN(CHAR)
-        TOKEN(STR)
+    TOKEN(EOF)        // end of file
+    TOKEN(KEYWORD)    // a pre-defined keyword
+    TOKEN(IDENTIFIER) //
+    TOKEN(INT)        //
+    TOKEN(FLOAT)      //
+    TOKEN(CHAR)       //
+    TOKEN(STR)        //
     /* punctuations
      */
     TOKEN(COLON)     // :
@@ -112,8 +119,7 @@ const char *token_names[] = {
     TOKEN(MUL_ASSIGN)    // *=
     TOKEN(DIV_ASSIGN)    // /=
     TOKEN(MOD_ASSIGN)    // %=
-
-        [TOKEN_POINTER] = "POINTER" // ->
+    TOKEN(POINTER)       // ->
 };
 #undef TOKEN
 
@@ -123,7 +129,7 @@ static void reset_buf() { bzero(buf, BUF_MAX_SIZE); }
 
 /* creates new token from filebuf
  */
-vtoken_t *vtoken_new(int type, int start, int len) {
+static vtoken_t *vtoken_new(int type, int start, int len) {
   vtoken_t *tok = xalloc(sizeof(vtoken_t));
   if (start < 0) {
     tok->type = type;
@@ -137,7 +143,7 @@ vtoken_t *vtoken_new(int type, int start, int len) {
 
 /* creates new token from buf
  */
-vtoken_t *vtoken_new_from_buf(int type) {
+static vtoken_t *vtoken_new_from_buf(int type) {
   vtoken_t *tok = xalloc(sizeof(vtoken_t));
   tok->type = type;
   tok->value = buf_new_from_mem(buf, buflen);
@@ -191,7 +197,11 @@ static int is_alpha(char chr) {
           (chr == '_'));
 }
 
-/* checks if current char is legit for id
+/* checks if current char is space
+ */
+static int is_space(char chr) { return (chr == ' '); }
+
+/* checks if current char is legit for the rest of an identifier
  */
 static int is_id(char chr) { return (is_digit(chr) || is_alpha(chr)); }
 
@@ -224,7 +234,7 @@ static vtoken_t *scan_number() {
   reset_buf();
   buflen = 0;
   int dotcount = 0;
-  int tt = TOKEN_INT;
+  int tt = TOKEN_INT; // token type
   while (1) {
     if (c == '.') {
       if (dotcount == 0) {
@@ -312,7 +322,7 @@ static int scan_comment() {
 
 /* tests buf to check if it's a keyword
  */
-static int identifier_test() { return 0; }
+static int is_keyword(vtoken_t *tok) { return 1; }
 
 static vtoken_t *scan_identifier() {
   logs("scanning identifier\n");
@@ -334,7 +344,7 @@ static vtoken_t *scan_identifier() {
   return t;
 }
 
-int lex_init(const char *_fname) {
+int lexer_init(const char *_fname) {
   FILE *fp = fopen(_fname, "rb");
   if (!fp) {
     fatalf("Could not open `%s` to read\n", fname);
@@ -347,6 +357,7 @@ int lex_init(const char *_fname) {
   line = 1;
   col = 0;
   filebufptr = 0;
+  assert(filebuf->len > 0);
   c = filebuf->s[filebufptr];
   buflen = 0;
   lastlex = 0;
@@ -355,15 +366,15 @@ int lex_init(const char *_fname) {
 
 /* free resources
  */
-int lex_fin() {
-  logs("freeing resources\n");
+int lexer_finish() {
+  logs("lexing done, freeing resources\n");
   buf_free(filebuf);
   return 0;
 }
 
 static vtoken_t *next_token() {
 _lex_loop:
-  logs("lexing next token\n");
+  logs("lexing the next token\n");
   // skip lexing if the last lex failed
   if (lastlex != 0) {
     logs("Last lex() failed, skipping\n");
@@ -407,7 +418,6 @@ _lex_loop:
         return NULL;
       }
       if (peek(1) == '=') {
-        // this is the case of division operation
         next(2);
         return vtoken_new(TOKEN_DIV_ASSIGN, -1, 0);
       }
@@ -579,9 +589,4 @@ _lex_loop:
 /* this function is called by parser to
  * get the tokens from stream
  */
-vtoken_t *lex() {
-  if (lastlex != 0) {
-    fatals("Last lex() failed, abort!\n");
-  }
-  return next_token();
-}
+vtoken_t *lex() { return next_token(); }

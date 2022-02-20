@@ -24,13 +24,7 @@
 #define logs(str)
 #endif
 
-/* error macros use by compiler, not to debug */
-#define errorf(fmt, ...)                                                       \
-  fprintf(stderr, "[" PHASE "]@%s:%d:%d " fmt, fname, line, col, __VA_ARGS__)
-
-#define errors(str) errorf("%s\n", str)
-
-/* fatal due to compiler bug */
+/* fatal due to compiler or system problems */
 #define fatalf(fmt, ...)                                                       \
   do {                                                                         \
     fprintf(stderr, "[FATAL][%s:%d:%s()] " fmt, __FILE__, __LINE__, __func__,  \

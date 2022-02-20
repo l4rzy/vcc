@@ -2,7 +2,7 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-#include "common.h"
+#include "vcc.h"
 #include <errno.h>
 
 /* file io functions */
@@ -13,8 +13,9 @@ void *xalloc(size_t size);
 
 /* common types */
 typedef struct _buf_t {
-    char *s;
-    int len;
+  char *s;
+  int len;
+  char *ptr;
 } buf_t;
 
 buf_t *buf_new(int);
