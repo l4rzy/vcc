@@ -29,38 +29,9 @@ static char peek(int);
 static int discard_until(char);
 static char next(int);
 
-#define KWORD(kw) [KWORD_##kw] = #kw,
-
-/* table of reserved keywords
- */
-static const char *keyword_tbl[] = {
-    KWORD(enum)
-    KWORD(struct)
-    KWORD(union)
-    KWORD(const)
-    KWORD(static)
-    KWORD(goto)
-    KWORD(sizeof)
-    KWORD(break)
-    KWORD(continue)
-    KWORD(return)
-    KWORD(if)
-    KWORD(else)
-    KWORD(while)
-    KWORD(do)
-    KWORD(for)
-    KWORD(switch)
-    KWORD(case)
-    KWORD(typedef)
-    KWORD(default)
-};
-
-#undef KWORD
-
 #define TOKEN(tok) [TOKEN_##tok] = #tok,
 const char *token_names[] = {
     TOKEN(EOF)        // end of file
-    TOKEN(KEYWORD)    // a pre-defined keyword
     TOKEN(IDENTIFIER) //
     TOKEN(INT)        //
     TOKEN(FLOAT)      //
@@ -120,6 +91,26 @@ const char *token_names[] = {
     TOKEN(DIV_ASSIGN)    // /=
     TOKEN(MOD_ASSIGN)    // %=
     TOKEN(POINTER)       // ->
+
+    TOKEN(KWORD_BREAK)    //
+    TOKEN(KWORD_CASE)     //
+    TOKEN(KWORD_CONST)    //
+    TOKEN(KWORD_CONTINUE) //
+    TOKEN(KWORD_DEFAULT)  //
+    TOKEN(KWORD_DO)       //
+    TOKEN(KWORD_ELSE)     //
+    TOKEN(KWORD_ENUM)     //
+    TOKEN(KWORD_FOR)      //
+    TOKEN(KWORD_GOTO)     //
+    TOKEN(KWORD_IF)       //
+    TOKEN(KWORD_RETURN)   //
+    TOKEN(KWORD_SIZEOF)   //
+    TOKEN(KWORD_STATIC)   //
+    TOKEN(KWORD_STRUCT)   //
+    TOKEN(KWORD_SWITCH)   //
+    TOKEN(KWORD_TYPEDEF)  //
+    TOKEN(KWORD_UNION)    //
+    TOKEN(KWORD_WHILE)    //
 };
 #undef TOKEN
 
@@ -131,13 +122,8 @@ static void reset_buf() { bzero(buf, BUF_MAX_SIZE); }
  */
 static vtoken_t *vtoken_new(int type, int start, int len) {
   vtoken_t *tok = xalloc(sizeof(vtoken_t));
-  if (start < 0) {
-    tok->type = type;
-    tok->value = NULL;
-    return tok;
-  }
   tok->type = type;
-  tok->value = buf_new_from_mem(filebuf->s + start, len);
+  tok->value.s = buf_new_from_mem(filebuf->s + start, len);
   return tok;
 }
 
@@ -146,11 +132,25 @@ static vtoken_t *vtoken_new(int type, int start, int len) {
 static vtoken_t *vtoken_new_from_buf(int type) {
   vtoken_t *tok = xalloc(sizeof(vtoken_t));
   tok->type = type;
-  tok->value = buf_new_from_mem(buf, buflen);
+  switch (type) {
+  case TOKEN_INT:
+    tok->value.i = atoi(buf);
+    break;
+  case TOKEN_FLOAT:
+    tok->value.f = atof(buf);
+    break;
+  default:
+    tok->value.s = buf_new_from_mem(buf, buflen);
+    break;
+  }
+
   return tok;
 }
 
-void vtoken_free(vtoken_t *token) { free(token->value); }
+void vtoken_free(vtoken_t *token) {
+  if (token->type != TOKEN_FLOAT && token->type != TOKEN_INT)
+    free(token->value.s);
+}
 
 /* looks for next char in buf without increasing filebufptr
  */
@@ -181,7 +181,7 @@ static char next(int n) {
   ++col;
   if (c == '\n') {
     ++line;
-    col = 0;
+    col = 1;
   }
   return c;
 }
@@ -199,7 +199,7 @@ static int is_alpha(char chr) {
 
 /* checks if current char is space
  */
-static int is_space(char chr) { return (chr == ' '); }
+static int is_space(char chr) { return ((chr == ' ') || (chr == '\n')); }
 
 /* checks if current char is legit for the rest of an identifier
  */
@@ -260,13 +260,23 @@ static vtoken_t *scan_number() {
     errors("wrong float\n");
     return NULL;
   }
-  if (tt == TOKEN_INT && buflen < 1) {
-    errors("wrong int\n");
-    return NULL;
-  }
   logf("parsed number: %s\n", buf);
   vtoken_t *tok = vtoken_new_from_buf(tt);
   return tok;
+}
+
+static vtoken_t *scan_number_neg() {
+  logs("Scanning number, negative case\n");
+  vtoken_t *num = scan_number();
+  switch (num->type) {
+  //
+  case TOKEN_FLOAT:
+    num->value.f = 0 - num->value.f;
+    break;
+  case TOKEN_INT:
+    num->value.i = 0 - num->value.i;
+  }
+  return num;
 }
 
 static vtoken_t *scan_string() {
@@ -322,7 +332,63 @@ static int scan_comment() {
 
 /* tests buf to check if it's a keyword
  */
-static int is_keyword(vtoken_t *tok) { return 1; }
+#define match(kw, tok_type)                                                    \
+  if (!strncmp(buf, kw, strlen(kw)))                                           \
+  return tok_type
+
+static int identifier_type() {
+  switch (buf[0]) {
+  case 'b':
+    match("break", TOKEN_KWORD_BREAK);
+    break;
+  case 'c':
+    match("case", TOKEN_KWORD_CASE);
+    match("const", TOKEN_KWORD_CONST);
+    match("continue", TOKEN_KWORD_CONTINUE);
+    break;
+  case 'd':
+    match("default", TOKEN_KWORD_DEFAULT);
+    match("do", TOKEN_KWORD_DO);
+    break;
+  case 'e':
+    match("enum", TOKEN_KWORD_ENUM);
+    match("else", TOKEN_KWORD_ELSE);
+    break;
+  case 'f':
+    match("for", TOKEN_KWORD_FOR);
+    break;
+  case 'g':
+    match("goto", TOKEN_KWORD_GOTO);
+    break;
+  case 'i':
+    match("if", TOKEN_KWORD_IF);
+    break;
+  case 'r':
+    match("return", TOKEN_KWORD_RETURN);
+    break;
+  case 's':
+    match("sizeof", TOKEN_KWORD_SIZEOF);
+    match("static", TOKEN_KWORD_STATIC);
+    match("struct", TOKEN_KWORD_STRUCT);
+    match("switch", TOKEN_KWORD_SWITCH);
+    break;
+  case 't':
+    match("typedef", TOKEN_KWORD_TYPEDEF);
+    break;
+  case 'u':
+    match("union", TOKEN_KWORD_UNION);
+    break;
+  case 'w':
+    match("while", TOKEN_KWORD_WHILE);
+    break;
+  default:
+    break;
+  }
+
+  return TOKEN_IDENTIFIER;
+}
+
+#undef match
 
 static vtoken_t *scan_identifier() {
   logs("scanning identifier\n");
@@ -340,7 +406,8 @@ static vtoken_t *scan_identifier() {
       break;
     }
   }
-  vtoken_t *t = vtoken_new_from_buf(TOKEN_IDENTIFIER);
+  // check if the idetifier is actually a keyword
+  vtoken_t *t = vtoken_new_from_buf(identifier_type());
   return t;
 }
 
@@ -355,7 +422,7 @@ int lexer_init(const char *_fname) {
   // init variables
   strncpy(fname, _fname, 255);
   line = 1;
-  col = 0;
+  col = 1;
   filebufptr = 0;
   assert(filebuf->len > 0);
   c = filebuf->s[filebufptr];
@@ -382,7 +449,7 @@ _lex_loop:
   }
   // ignore white spaces
   if (c != BUF_EOF) {
-    if (isspace(c)) {
+    if (is_space(c)) {
       // it's safe to continue here since we filter new line in next(1)
       next(1);
       goto _lex_loop;
@@ -562,6 +629,10 @@ _lex_loop:
       if (peek(1) == '-') {
         next(2);
         return vtoken_new(TOKEN_DEC, -1, 0);
+      }
+      if (is_digit(peek(1))) {
+        next(1);
+        return scan_number_neg();
       }
       next(1);
       return vtoken_new(TOKEN_SUB, -1, 0);

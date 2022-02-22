@@ -12,38 +12,12 @@
 
 enum { LEX_ERR_NONE, LEX_ERR_IO, LEX_ERR_NOMEM, LEX_ERR_UNKNOWN };
 
-/* a table and index to save keyworlds
- */
-enum {
-  KWORD_none,
-  KWORD_enum,
-  KWORD_struct,
-  KWORD_union,
-  KWORD_const,
-  KWORD_static,
-  KWORD_goto,
-  KWORD_sizeof,
-  KWORD_break,
-  KWORD_continue,
-  KWORD_return,
-  KWORD_if,
-  KWORD_else,
-  KWORD_while,
-  KWORD_do,
-  KWORD_for,
-  KWORD_switch,
-  KWORD_case,
-  KWORD_typedef,
-  KWORD_default
-};
-
 /* token types
  */
 enum {
   /* special tokens
    */
   TOKEN_EOF, // end of file
-  TOKEN_KEYWORD,
   TOKEN_IDENTIFIER,
   TOKEN_INT,
   TOKEN_FLOAT,
@@ -104,16 +78,45 @@ enum {
   TOKEN_MOD_ASSIGN,    // %=
 
   TOKEN_POINTER, // ->
+
+  /* keyword tokens
+   */
+  TOKEN_KWORD_BREAK,
+  TOKEN_KWORD_CASE,
+  TOKEN_KWORD_CONST,
+  TOKEN_KWORD_CONTINUE,
+  TOKEN_KWORD_DEFAULT,
+  TOKEN_KWORD_DO,
+  TOKEN_KWORD_ELSE,
+  TOKEN_KWORD_ENUM,
+  TOKEN_KWORD_FOR,
+  TOKEN_KWORD_GOTO,
+  TOKEN_KWORD_IF,
+  TOKEN_KWORD_RETURN,
+  TOKEN_KWORD_SIZEOF,
+  TOKEN_KWORD_STATIC,
+  TOKEN_KWORD_STRUCT,
+  TOKEN_KWORD_SWITCH,
+  TOKEN_KWORD_TYPEDEF,
+  TOKEN_KWORD_UNION,
+  TOKEN_KWORD_WHILE,
   /* others
    */
-  NUM_TOKENS
+  NUMBER_OF_TOKENS
 };
 
 extern const char *token_names[];
 
 typedef struct _vtoken_t {
   int type;
-  buf_t *value;
+  union {
+    int i;
+    float f;
+    buf_t *s;
+  } value;
+
+  int line;
+  int col;
 } vtoken_t;
 
 // vtoken_t *vtoken_new(int, int, int);
@@ -128,15 +131,14 @@ typedef struct _lex_error_t {
 
 typedef struct _vcc_lexer_t {
   buf_t *filebuf;         // code buffer
-  int filebufptr;         // pointer to file buffer
+  int ptr;                // pointer to file buffer
   char fname[256];        // name of lexed file
   int line;               // current line
   int col;                // current column
   int c;                  // current char
   char buf[BUF_MAX_SIZE]; // buffer to save temp stream
   int buflen;             // len of buf for scanning
-
-  int lastlex; // return value of the last lex call
+  int lastlex;            // return value of the last lex call
 } vcc_lexer_t;
 
 int lexer_init(const char *fname);

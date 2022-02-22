@@ -41,6 +41,8 @@ buf_t *buf_new_from_mem(char *mem, size_t size) {
 }
 
 void buf_free(buf_t *buf) {
-  free(buf->s);
-  free(buf);
+  if (buf) {
+    free(buf->s);
+    free(buf);
+  }
 }
