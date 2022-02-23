@@ -1,5 +1,6 @@
 #include "src/lexer.h"
 #include "src/mem.h"
+#include "src/parser.h"
 
 int print_token(vtoken_t *t) {
   printf("(%s", token_names[t->type]);
@@ -18,20 +19,33 @@ int print_token(vtoken_t *t) {
   return 0;
 }
 
+void test_lexer(int argc, char *argv[]) {
+  if (argc != 2) {
+    printf("%s [file name]\n", argv[0]);
+    return;
+  }
+  vtoken_t *t;
+  vcc_lexer_init(argv[1]);
+  do {
+    t = vcc_lex();
+    if (t == NULL) {
+      return;
+    }
+    print_token(t);
+    vtoken_free(t);
+  } while (t->type != TOKEN_EOF);
+  vcc_lexer_finish();
+}
+
 int main(int argc, char *argv[]) {
   if (argc != 2) {
     printf("%s [file name]\n", argv[0]);
     return -1;
   }
-  vtoken_t *t;
-  lexer_init(argv[1]);
-  do {
-    t = lex();
-    if (t == NULL) {
-      return 0;
-    }
-    print_token(t);
-    vtoken_free(t);
-  } while (t->type != TOKEN_EOF);
-  lexer_finish();
+  vcc_lexer_init(argv[1]);
+  vcc_parser_init();
+
+  while (!vcc_parser_eof()) {
+    vcc_parse();
+  }
 }

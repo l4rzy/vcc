@@ -12,9 +12,8 @@
 #ifdef ENABLE_DEBUG
 #define logf(fmt, ...)                                                         \
   do {                                                                         \
-    fprintf(stderr,                                                            \
-            "[LOG][\033[0;32m%s\033[0m:%d:\033[0;34m%s()\033[0m] " fmt,        \
-            __FILE__, __LINE__, __func__, __VA_ARGS__);                        \
+    fprintf(stderr, "[%s][\033[0;32m%s\033[0m:%d:\033[0;34m%s()\033[0m] " fmt, \
+            PHASE, __FILE__, __LINE__, __func__, __VA_ARGS__);                 \
   } while (0)
 
 #define logs(str) logf("%s", str)

@@ -411,7 +411,7 @@ static vtoken_t *scan_identifier() {
   return t;
 }
 
-int lexer_init(const char *_fname) {
+int vcc_lexer_init(const char *_fname) {
   FILE *fp = fopen(_fname, "rb");
   if (!fp) {
     fatalf("Could not open `%s` to read\n", fname);
@@ -433,7 +433,7 @@ int lexer_init(const char *_fname) {
 
 /* free resources
  */
-int lexer_finish() {
+int vcc_lexer_finish() {
   logs("lexing done, freeing resources\n");
   buf_free(filebuf);
   return 0;
@@ -497,19 +497,27 @@ _lex_loop:
 
     case '(':
       next(1);
-      return vtoken_new(TOKEN_LBRACKET, -1, 0);
+      return vtoken_new(TOKEN_LPAREN, -1, 0);
 
     case ')':
+      next(1);
+      return vtoken_new(TOKEN_RPAREN, -1, 0);
+
+    case '[':
+      next(1);
+      return vtoken_new(TOKEN_LBRACKET, -1, 0);
+
+    case ']':
       next(1);
       return vtoken_new(TOKEN_RBRACKET, -1, 0);
 
     case '{':
       next(1);
-      return vtoken_new(TOKEN_LPAREN, -1, 0);
+      return vtoken_new(TOKEN_LBRACE, -1, 0);
 
     case '}':
       next(1);
-      return vtoken_new(TOKEN_RPAREN, -1, 0);
+      return vtoken_new(TOKEN_RBRACE, -1, 0);
 
     case '*':
       if (peek(1) == '=') {
@@ -529,12 +537,6 @@ _lex_loop:
       next(1);
       return vtoken_new(TOKEN_DOT, -1, 0);
 
-    case '[':
-      next(1);
-      return vtoken_new(TOKEN_LBRACE, -1, 0);
-    case ']':
-      next(1);
-      return vtoken_new(TOKEN_RBRACE, -1, 0);
     case '!':
       if (peek(1) == '=') {
         next(2);
@@ -660,4 +662,4 @@ _lex_loop:
 /* this function is called by parser to
  * get the tokens from stream
  */
-vtoken_t *lex() { return next_token(); }
+vtoken_t *vcc_lex() { return next_token(); }

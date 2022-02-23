@@ -141,8 +141,8 @@ typedef struct _vcc_lexer_t {
   int lastlex;            // return value of the last lex call
 } vcc_lexer_t;
 
-int lexer_init(const char *fname);
-int lexer_finish();
-vtoken_t *lex();
+int vcc_lexer_init(const char *fname);
+int vcc_lexer_finish();
+vtoken_t *vcc_lex();
 
 #endif
