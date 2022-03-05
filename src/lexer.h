@@ -60,7 +60,7 @@ enum {
   TOKEN_DEC,      // --
   /* logic operators
    */
-  TOKEN_TERNARY, // !
+  TOKEN_NOT,     // !
   TOKEN_AND_AND, // &&
   TOKEN_OR_OR,   // ||
   /* assign operators
@@ -92,6 +92,7 @@ enum {
   TOKEN_KWORD_FOR,
   TOKEN_KWORD_GOTO,
   TOKEN_KWORD_IF,
+  TOKEN_KWORD_NULL,
   TOKEN_KWORD_RETURN,
   TOKEN_KWORD_SIZEOF,
   TOKEN_KWORD_STATIC,

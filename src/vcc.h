@@ -1,19 +1,22 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#define ERR_MAX_SIZE 1024
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define ERR_MAX_SIZE 1024
+#define VCC_PHASE_LEXING "lexing"
+#define VCC_PHASE_PARSING "parsing"
+
 #ifdef ENABLE_DEBUG
 #define logf(fmt, ...)                                                         \
   do {                                                                         \
     fprintf(stderr, "[%s][\033[0;32m%s\033[0m:%d:\033[0;34m%s()\033[0m] " fmt, \
             PHASE, __FILE__, __LINE__, __func__, __VA_ARGS__);                 \
+                                                                               \
   } while (0)
 
 #define logs(str) logf("%s", str)

@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "mem.h"
 
 /* for error emitting
  */
@@ -74,7 +75,7 @@ const char *token_names[] = {
     TOKEN(DEC)      // --
     /* logic operators
      */
-    TOKEN(TERNARY) // !
+    TOKEN(NOT)     // !
     TOKEN(AND_AND) // &&
     TOKEN(OR_OR)   // ||
     /* assign operators
@@ -103,6 +104,7 @@ const char *token_names[] = {
     TOKEN(KWORD_FOR)      //
     TOKEN(KWORD_GOTO)     //
     TOKEN(KWORD_IF)       //
+    TOKEN(KWORD_NULL)     //
     TOKEN(KWORD_RETURN)   //
     TOKEN(KWORD_SIZEOF)   //
     TOKEN(KWORD_STATIC)   //
@@ -148,8 +150,11 @@ static vtoken_t *vtoken_new_from_buf(int type) {
 }
 
 void vtoken_free(vtoken_t *token) {
+  if (!token) {
+    return;
+  }
   if (token->type != TOKEN_FLOAT && token->type != TOKEN_INT)
-    free(token->value.s);
+    buf_free(token->value.s);
 }
 
 /* looks for next char in buf without increasing filebufptr
@@ -230,7 +235,6 @@ static vtoken_t *scan_char() {
 }
 
 static vtoken_t *scan_number() {
-  logs("Scanning number\n");
   reset_buf();
   buflen = 0;
   int dotcount = 0;
@@ -363,6 +367,9 @@ static int identifier_type() {
   case 'i':
     match("if", TOKEN_KWORD_IF);
     break;
+  case 'N':
+    match("NULL", TOKEN_KWORD_NULL);
+    break;
   case 'r':
     match("return", TOKEN_KWORD_RETURN);
     break;
@@ -441,7 +448,7 @@ int vcc_lexer_finish() {
 
 static vtoken_t *next_token() {
 _lex_loop:
-  logs("lexing the next token\n");
+  // logs("lexing the next token\n");
   // skip lexing if the last lex failed
   if (lastlex != 0) {
     logs("Last lex() failed, skipping\n");
@@ -454,7 +461,7 @@ _lex_loop:
       next(1);
       goto _lex_loop;
     }
-    logf("line %d col %d | c = '%c'\n", line, col, c);
+    // logf("line %d col %d | c = '%c'\n", line, col, c);
     switch (c) {
     case '#': // currently treat preprocessing statements as comments
       logf("Preprocessor procedure on line %d\n", line);
@@ -543,7 +550,7 @@ _lex_loop:
         return vtoken_new(TOKEN_NOT_EQ, -1, 0);
       }
       next(1);
-      return vtoken_new(TOKEN_TERNARY, -1, 0);
+      return vtoken_new(TOKEN_NOT, -1, 0);
 
     case '>':
       // to do shift & shift equal

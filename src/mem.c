@@ -16,6 +16,12 @@ void *xalloc(size_t size) {
   return ret;
 }
 
+void xfree(void *ptr) {
+  if (ptr) {
+    free(ptr);
+  }
+}
+
 buf_t *buf_new(int len) {
   buf_t *b = xalloc(sizeof(buf_t));
   b->s = xalloc(len + 1);
@@ -40,9 +46,17 @@ buf_t *buf_new_from_mem(char *mem, size_t size) {
   return b;
 }
 
+buf_t *buf_new_from_string(char *str) {
+  int len = strlen(str);
+  buf_t *b = buf_new(len);
+  strncpy(b->s, str, len);
+  b->len = len;
+  return b;
+}
+
 void buf_free(buf_t *buf) {
   if (buf) {
-    free(buf->s);
-    free(buf);
+    xfree(buf->s);
+    xfree(buf);
   }
 }

@@ -10,6 +10,7 @@ long file_len(FILE *);
 
 /* memory allocation functions */
 void *xalloc(size_t size);
+void xfree(void *ptr);
 
 /* common types */
 typedef struct _buf_t {

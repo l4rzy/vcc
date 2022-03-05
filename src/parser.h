@@ -3,25 +3,114 @@
 
 #include "error.h"
 #include "lexer.h"
+#include "mem.h"
 
 enum {
-  NODE_TYPE_FUNC = 0,
-  NODE_TYPE_STMT_IF,
-  NODE_TYPE_STMT_WHILE,
-  NODE_TYPE_STMT_RETURN,
-  NODE_TYPE_STMT_DECLARE
+  VCC_NODE_FUNC = 0,
+  VCC_NODE_STMT_IF,
+  VCC_NODE_STMT_WHILE,
+  VCC_NODE_STMT_RETURN,
+  VCC_NODE_STMT_DECLARE
 };
 
+enum {
+  PREC_EXPR = 0,
+  PREC_EQUALITY,
+  PREC_COMPARISON,
+  PREC_TERM,
+  PREC_FACTOR,
+  PREC_UNARY,
+  PREC_PRIMARY
+};
+
+enum { STMT_TYPE_IF, STMT_TYPE_WHILE, STMT_TYPE_RETURN, STMT_TYPE_DECL };
+
+enum { EXPR_OP_MUL = 0, EXPR_OP_DIV, EXPR_OP_ADD, EXPR_OP_SUB };
+
+enum { VCC_PARSER_ERR_NONE = 0, VCC_PARSER_ERR_WRONG_STMT };
+
+/* ========= EXPRESSIONS ========== */
+typedef struct _vcc_expr_t {
+  int arity; // numbers of argument
+  int prec;  // precedence
+  int opr;   // operator
+  struct _vcc_expr_t *lhs;
+  struct _vcc_expr_t *rhs;
+  // atomic expression e.g. number, function call
+  union {
+    int number;
+    void *func_call;
+  } atomic;
+  struct _vcc_expr_t *next;
+} vcc_expr_t;
+
+vcc_expr_t *vcc_expr_new();
+vcc_expr_t *vcc_expr_new_binary(vcc_expr_t *lhs, int opr, vcc_expr_t *rhs);
+vcc_expr_t *vcc_expr_new_unary(int opr, vcc_expr_t *rhs);
+vcc_expr_t *vcc_expr_new_atomic_int(int val);
+vcc_expr_t *vcc_expr_new_atomic_null();
+
+vcc_expr_t *vcc_expr_parse();
+vcc_expr_t *vcc_expr_parse_equality();
+vcc_expr_t *vcc_expr_parse_comparison();
+vcc_expr_t *vcc_expr_parse_term();
+vcc_expr_t *vcc_expr_parse_factor();
+vcc_expr_t *vcc_expr_parse_unary();
+vcc_expr_t *vcc_expr_parse_primary();
+
+/* ========= STATEMENTS ========== */
+typedef struct _vcc_closure_t {
+
+} vcc_closure_t;
+
+typedef struct _vcc_func_t {
+  int arity;
+  char *name;
+  vcc_closure_t *body;
+} vcc_func_t;
+
+typedef struct _vcc_stmt_t {
+  int type;
+  vcc_expr_t *condition;
+  vcc_closure_t *body;
+  vcc_expr_t *expr;
+
+} vcc_stmt_t;
+
+/* ========= PARSER ========== */
+typedef struct _vcc_parser_err_t {
+  int code;
+  buf_t msg;
+} vcc_parser_err_t;
+
 typedef struct _vcc_parser_t {
+  vtoken_t *previous;
   vtoken_t *current;
   vtoken_t *next;
 
-  int error;
+  int stacks; // parenthesis stacks
+  vcc_parser_err_t err;
 } vcc_parser_t;
+
+typedef struct _vcc_node_t {
+  int type;
+  union {
+    vcc_stmt_t *stmt;
+    vcc_expr_t *expr;
+    vcc_func_t *func;
+  } value;
+  struct _vcc_node_t *next;
+} vcc_node_t;
 
 void vcc_parser_init();
 void vcc_parser_finish();
-int vcc_parser_eof();
-void vcc_parse();
+int vcc_parser_continuable();
+
+vcc_node_t *vcc_node_new();
+void *vcc_node_free();
+
+void vcc_parser_advance();
+
+vcc_node_t *vcc_parse();
 
 #endif

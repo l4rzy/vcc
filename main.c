@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   vcc_lexer_init(argv[1]);
   vcc_parser_init();
 
-  while (!vcc_parser_eof()) {
+  while (vcc_parser_continuable()) {
     vcc_parse();
   }
 }
