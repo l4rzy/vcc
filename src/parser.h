@@ -58,6 +58,8 @@ vcc_expr_t *vcc_expr_parse_factor();
 vcc_expr_t *vcc_expr_parse_unary();
 vcc_expr_t *vcc_expr_parse_primary();
 
+void vcc_expr_print(vcc_expr_t *root, int depth);
+
 /* ========= STATEMENTS ========== */
 typedef struct _vcc_closure_t {
 

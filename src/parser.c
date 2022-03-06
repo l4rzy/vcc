@@ -299,7 +299,6 @@ vcc_node_t *vcc_parser_stmt_if() {
   expect(TOKEN_LPAREN, VCC_PARSER_ERR_STMT);
   advance();
   stmt->condition = vcc_expr_parse();
-  vcc_expr_print(stmt->condition, 2);
   expect(TOKEN_RPAREN, VCC_PARSER_ERR_STMT);
   advance();
   expect(TOKEN_LBRACE, VCC_PARSER_ERR_STMT);
@@ -309,7 +308,6 @@ vcc_node_t *vcc_parser_stmt_if() {
   node->value.stmt = stmt;
   return node;
 }
-#undef expect
 
 vcc_node_t *vcc_parser_stmt_return() {
   logs("parsing a return statement\n");
@@ -317,7 +315,8 @@ vcc_node_t *vcc_parser_stmt_return() {
   vcc_stmt_t *stmt = vcc_stmt_new();
   stmt->type = STMT_TYPE_RETURN;
   stmt->expr = vcc_expr_parse();
-  vcc_expr_print(stmt->expr, 2);
+
+  expect(TOKEN_SEMICOLON, VCC_PARSER_ERR_STMT);
 
   vcc_node_t *node = vcc_node_new();
   node->type = VCC_NODE_STMT;
@@ -325,6 +324,8 @@ vcc_node_t *vcc_parser_stmt_return() {
 
   return node;
 }
+
+#undef expect
 
 vcc_node_t *vcc_parse() {
   advance();
