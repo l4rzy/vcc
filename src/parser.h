@@ -7,10 +7,7 @@
 
 enum {
   VCC_NODE_FUNC = 0,
-  VCC_NODE_STMT_IF,
-  VCC_NODE_STMT_WHILE,
-  VCC_NODE_STMT_RETURN,
-  VCC_NODE_STMT_DECLARE
+  VCC_NODE_STMT,
 };
 
 enum {
@@ -27,7 +24,10 @@ enum { STMT_TYPE_IF, STMT_TYPE_WHILE, STMT_TYPE_RETURN, STMT_TYPE_DECL };
 
 enum { EXPR_OP_MUL = 0, EXPR_OP_DIV, EXPR_OP_ADD, EXPR_OP_SUB };
 
-enum { VCC_PARSER_ERR_NONE = 0, VCC_PARSER_ERR_WRONG_STMT };
+enum { VCC_PARSER_ERR_NONE = 0, VCC_PARSER_ERR_STMT, VCC_PARSER_ERR_EXPR };
+
+extern const char *node_types[];
+extern const char *stmt_types[];
 
 /* ========= EXPRESSIONS ========== */
 typedef struct _vcc_expr_t {
@@ -77,10 +77,13 @@ typedef struct _vcc_stmt_t {
 
 } vcc_stmt_t;
 
+vcc_stmt_t *vcc_stmt_new();
+void vcc_stmt_free(vcc_stmt_t *stmt);
+
 /* ========= PARSER ========== */
 typedef struct _vcc_parser_err_t {
   int code;
-  buf_t msg;
+  buf_t *msg;
 } vcc_parser_err_t;
 
 typedef struct _vcc_parser_t {
@@ -107,7 +110,7 @@ void vcc_parser_finish();
 int vcc_parser_continuable();
 
 vcc_node_t *vcc_node_new();
-void *vcc_node_free();
+void vcc_node_free(vcc_node_t *node);
 
 void vcc_parser_advance();
 

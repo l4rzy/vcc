@@ -37,6 +37,16 @@ void test_lexer(int argc, char *argv[]) {
   vcc_lexer_finish();
 }
 
+void node_inspect(vcc_node_t *node) {
+  if (!node)
+    return;
+
+  printf("parsed node %s\n", node_types[node->type]);
+  if (node->type == VCC_NODE_STMT) {
+    printf("stmt type: %s\n", stmt_types[node->value.stmt->type]);
+  }
+}
+
 int main(int argc, char *argv[]) {
   if (argc != 2) {
     printf("%s [file name]\n", argv[0]);
@@ -46,6 +56,8 @@ int main(int argc, char *argv[]) {
   vcc_parser_init();
 
   while (vcc_parser_continuable()) {
-    vcc_parse();
+    vcc_node_t *node = vcc_parse();
+    node_inspect(node);
+    vcc_node_free(node);
   }
 }

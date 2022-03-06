@@ -8,6 +8,14 @@
 
 static vcc_parser_t P;
 
+const char *node_types[] = {
+    [VCC_NODE_FUNC] = "function", [VCC_NODE_STMT] = "statement"};
+
+const char *stmt_types[] = {[STMT_TYPE_IF] = "if",
+                            [STMT_TYPE_RETURN] = "return",
+                            [STMT_TYPE_WHILE] = "while",
+                            [STMT_TYPE_DECL] = "declaration"};
+
 #define CURRENT P.current
 #define NEXT P.next
 #define PREVIOUS P.previous
@@ -69,6 +77,17 @@ vcc_node_t *vcc_node_new() {
   return node;
 }
 
+void vcc_node_free(vcc_node_t *node) {
+  if (!node)
+    return;
+
+  switch (node->type) {
+  case VCC_NODE_STMT:
+    vcc_stmt_free(node->value.stmt);
+    break;
+  }
+}
+
 /* ================ EXPRESSIONS ================= */
 static int match(int num, ...) {
   va_list args;
@@ -84,6 +103,8 @@ static int match(int num, ...) {
 }
 
 void vcc_expr_print(vcc_expr_t *root, int depth) {
+  if (!root)
+    return;
   printf("%*s\t%d\n", depth, token_names[root->opr], root->atomic.number);
   if (root->lhs) {
     vcc_expr_print(root->lhs, depth + 8);
@@ -191,6 +212,11 @@ vcc_expr_t *vcc_expr_parse_primary() {
 
     logf("ended at %s\n", token_names[CURRENT->type]);
     // TODO: expect the RPAREN here
+    if (CURRENT->type == TOKEN_RPAREN) {
+      advance();
+    } else {
+      P.err.code = VCC_PARSER_ERR_EXPR;
+    }
     return expr;
   }
   return NULL;
@@ -269,20 +295,36 @@ vcc_node_t *vcc_parser_stmt_if() {
   logs("parsing an if statement\n");
   advance();
   vcc_stmt_t *stmt = vcc_stmt_new();
-  expect(TOKEN_LPAREN, VCC_PARSER_ERR_WRONG_STMT);
+  stmt->type = STMT_TYPE_IF;
+  expect(TOKEN_LPAREN, VCC_PARSER_ERR_STMT);
   advance();
   stmt->condition = vcc_expr_parse();
   vcc_expr_print(stmt->condition, 2);
-  expect(TOKEN_RPAREN, VCC_PARSER_ERR_WRONG_STMT);
+  expect(TOKEN_RPAREN, VCC_PARSER_ERR_STMT);
   advance();
-  expect(TOKEN_LBRACE, VCC_PARSER_ERR_WRONG_STMT);
+  expect(TOKEN_LBRACE, VCC_PARSER_ERR_STMT);
   vcc_node_t *node = vcc_node_new();
 
-  node->type = VCC_NODE_STMT_IF;
+  node->type = VCC_NODE_STMT;
   node->value.stmt = stmt;
   return node;
 }
 #undef expect
+
+vcc_node_t *vcc_parser_stmt_return() {
+  logs("parsing a return statement\n");
+  advance();
+  vcc_stmt_t *stmt = vcc_stmt_new();
+  stmt->type = STMT_TYPE_RETURN;
+  stmt->expr = vcc_expr_parse();
+  vcc_expr_print(stmt->expr, 2);
+
+  vcc_node_t *node = vcc_node_new();
+  node->type = VCC_NODE_STMT;
+  node->value.stmt = stmt;
+
+  return node;
+}
 
 vcc_node_t *vcc_parse() {
   advance();
@@ -294,6 +336,7 @@ vcc_node_t *vcc_parse() {
     break;
 
   case TOKEN_KWORD_RETURN:
+    return vcc_parser_stmt_return();
     break;
   }
   // TODO:
