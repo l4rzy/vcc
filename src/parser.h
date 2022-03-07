@@ -42,6 +42,10 @@ typedef struct _vcc_expr_t {
     void *func_call;
   } atomic;
   struct _vcc_expr_t *next;
+
+  // special flags for marking on generating
+  int _done;
+  int _depth;
 } vcc_expr_t;
 
 vcc_expr_t *vcc_expr_new();
@@ -75,6 +79,7 @@ typedef struct _vcc_stmt_t {
   int type;
   vcc_expr_t *condition;
   vcc_closure_t *body;
+  vcc_closure_t *else_body;
   vcc_expr_t *expr;
 
 } vcc_stmt_t;

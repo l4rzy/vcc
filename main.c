@@ -19,13 +19,9 @@ int print_token(vtoken_t *t) {
   return 0;
 }
 
-void test_lexer(int argc, char *argv[]) {
-  if (argc != 2) {
-    printf("%s [file name]\n", argv[0]);
-    return;
-  }
+void test_lexer(char *fname) {
   vtoken_t *t;
-  vcc_lexer_init(argv[1]);
+  vcc_lexer_init(fname);
   do {
     t = vcc_lex();
     if (t == NULL) {
@@ -47,12 +43,8 @@ void node_inspect(vcc_node_t *node) {
   }
 }
 
-int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    printf("%s [file name]\n", argv[0]);
-    return -1;
-  }
-  vcc_lexer_init(argv[1]);
+void test_parser(char *fname) {
+  vcc_lexer_init(fname);
   vcc_parser_init();
 
   while (vcc_parser_continuable()) {
@@ -60,4 +52,20 @@ int main(int argc, char *argv[]) {
     node_inspect(node);
     vcc_node_free(node);
   }
+}
+
+int main(int argc, char *argv[]) {
+  if (argc < 3) {
+    printf("%s l [filename]\n%s p [filename]\n", argv[0], argv[0]);
+    return -1;
+  }
+  if (!strcmp(argv[1], "l") || !strcmp(argv[1], "lex")) {
+    test_lexer(argv[2]);
+    return 0;
+  }
+  if (!strcmp(argv[1], "p") || !strcmp(argv[1], "parse")) {
+    test_parser(argv[2]);
+    return 0;
+  }
+  return 0;
 }
