@@ -40,6 +40,8 @@ void node_inspect(vcc_node_t *node) {
   printf("parsed node %s\n", node_types[node->type]);
   if (node->type == VCC_NODE_STMT) {
     printf("stmt type: %s\n", stmt_types[node->value.stmt->type]);
+    vcc_expr_print(node->value.stmt->expr, 2);
+    vcc_expr_print(node->value.stmt->condition, 2);
   }
 }
 

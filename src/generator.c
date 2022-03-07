@@ -17,8 +17,8 @@ static void nasm_expr(vcc_expr_t *expr, int depth) {
   vcc_expr_t *lhs = expr->lhs;
   vcc_expr_t *rhs = expr->rhs;
   if (expr->arity == 2 && lhs->arity == 0 && rhs->arity == 0) {
-    sprintf(buffer->s, "mov r8, %d\nmov r9, %d\n", lhs->atomic.number,
-            rhs->atomic.number);
+    sprintf(buffer->s, "mov r8, %d\nmov r9, %d\n", lhs->literal.number,
+            rhs->literal.number);
 
     switch (expr->opr) {
     case TOKEN_ADD:
@@ -64,4 +64,5 @@ char *vcc_generate(vcc_node_t *node) {
   case VCC_NODE_STMT:
     return vcc_generate_stmt(node->value.stmt);
   }
+  return NULL;
 }

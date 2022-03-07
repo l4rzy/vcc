@@ -40,7 +40,7 @@ typedef struct _vcc_expr_t {
   union {
     int number;
     void *func_call;
-  } atomic;
+  } literal;
   struct _vcc_expr_t *next;
 
   // special flags for marking on generating

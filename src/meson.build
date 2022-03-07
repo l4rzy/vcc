@@ -1,5 +1,6 @@
 sources += files(
                'lexer.c',
                'parser.c',
-               'mem.c'
+               'mem.c',
+               'generator.c'
            )

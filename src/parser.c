@@ -105,7 +105,7 @@ static int match(int num, ...) {
 void vcc_expr_print(vcc_expr_t *root, int depth) {
   if (!root)
     return;
-  printf("%*s\t%d\n", depth, token_names[root->opr], root->atomic.number);
+  printf("%*s\t%d\n", depth, token_names[root->opr], root->literal.number);
   if (root->lhs) {
     vcc_expr_print(root->lhs, depth + 8);
   }
@@ -250,7 +250,7 @@ vcc_expr_t *vcc_expr_new_atomic_int(int val) {
   vcc_expr_t *expr = vcc_expr_new();
   expr->arity = 0;
   expr->opr = TOKEN_INT;
-  expr->atomic.number = val;
+  expr->literal.number = val;
 
   return expr;
 }
