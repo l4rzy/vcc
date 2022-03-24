@@ -54,6 +54,7 @@ void test_parser(char *fname) {
     node_inspect(node);
     vcc_node_free(node);
   }
+  vcc_parser_finish();
 }
 
 int main(int argc, char *argv[]) {

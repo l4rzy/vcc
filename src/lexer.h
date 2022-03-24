@@ -139,7 +139,7 @@ typedef struct _vcc_lexer_t {
   int c;                  // current char
   char buf[BUF_MAX_SIZE]; // buffer to save temp stream
   int buflen;             // len of buf for scanning
-  int lastlex;            // return value of the last lex call
+  int error;              // return value of the last lex call
 } vcc_lexer_t;
 
 int vcc_lexer_init(const char *fname);

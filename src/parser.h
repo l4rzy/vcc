@@ -24,7 +24,12 @@ enum { STMT_TYPE_IF, STMT_TYPE_WHILE, STMT_TYPE_RETURN, STMT_TYPE_DECL };
 
 enum { EXPR_OP_MUL = 0, EXPR_OP_DIV, EXPR_OP_ADD, EXPR_OP_SUB };
 
-enum { VCC_PARSER_ERR_NONE = 0, VCC_PARSER_ERR_STMT, VCC_PARSER_ERR_EXPR };
+enum {
+  VCC_PARSER_ERR_NONE = 0,
+  VCC_PARSER_ERR_STMT,
+  VCC_PARSER_ERR_EXPR,
+  VCC_PARSER_ERR_LEXER
+};
 
 extern const char *node_types[];
 extern const char *stmt_types[];
@@ -65,23 +70,22 @@ vcc_expr_t *vcc_expr_parse_primary();
 void vcc_expr_print(vcc_expr_t *root, int depth);
 
 /* ========= STATEMENTS ========== */
-typedef struct _vcc_closure_t {
-
-} vcc_closure_t;
+typedef struct _vcc_block_t {
+  struct _vcc_stmt_t *stmt;
+} vcc_block_t;
 
 typedef struct _vcc_func_t {
   int arity;
   char *name;
-  vcc_closure_t *body;
+  vcc_block_t *body;
 } vcc_func_t;
 
 typedef struct _vcc_stmt_t {
   int type;
   vcc_expr_t *condition;
-  vcc_closure_t *body;
-  vcc_closure_t *else_body;
+  vcc_block_t *body;
+  vcc_block_t *else_body;
   vcc_expr_t *expr;
-
 } vcc_stmt_t;
 
 vcc_stmt_t *vcc_stmt_new();

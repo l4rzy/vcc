@@ -36,14 +36,21 @@ static void advance() {
     CURRENT = NEXT;
     NEXT = vcc_lex();
   }
-
-  if (!PREVIOUS) {
-    logf("current at: [%s] %s\n", token_names[CURRENT->type],
-         token_names[NEXT->type]);
-    return;
+  if (!CURRENT) {
+    P.err.code = VCC_PARSER_ERR_LEXER;
   }
-  logf("current at: %s [%s] %s\n", token_names[PREVIOUS->type],
-       token_names[CURRENT->type], token_names[NEXT->type]);
+
+  logs("current at:");
+  if (PREVIOUS) {
+    printf(" %s", token_names[PREVIOUS->type]);
+  }
+  if (CURRENT) {
+    printf(" [%s]", token_names[CURRENT->type]);
+  }
+  if (NEXT) {
+    printf(" %s", token_names[NEXT->type]);
+  }
+  printf("\n");
 }
 
 void vcc_parser_advance() { advance(); }
@@ -62,13 +69,21 @@ static void consume(int type) {
 
 static int reached_eof() {
   if (CURRENT) {
-    return CURRENT->type == TOKEN_EOF;
+    // return CURRENT->type == TOKEN_EOF;
+    if (CURRENT->type == TOKEN_EOF) {
+      logs("reached EOF\n");
+      return 1;
+    }
   }
   return 0;
 }
 
 int vcc_parser_continuable() {
-  return !reached_eof() && P.err.code == VCC_PARSER_ERR_NONE;
+  if (P.err.code != VCC_PARSER_ERR_NONE) {
+    logf("parser error: %d\n", P.err.code);
+    return 0;
+  }
+  return !reached_eof();
 }
 
 vcc_node_t *vcc_node_new() {
@@ -329,6 +344,11 @@ vcc_node_t *vcc_parser_stmt_return() {
 
 vcc_node_t *vcc_parse() {
   advance();
+  if (P.err.code != VCC_PARSER_ERR_NONE) {
+    logf("Parser error code: %d\n", P.err.code);
+    return NULL;
+  }
+
   switch (CURRENT->type) {
   case TOKEN_KWORD_IF:
     return vcc_parser_stmt_if();
@@ -343,3 +363,5 @@ vcc_node_t *vcc_parse() {
   // TODO:
   return NULL;
 }
+
+void vcc_parser_finish() { logs("Parsing done, freeing resources\n"); }
